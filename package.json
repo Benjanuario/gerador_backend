@@ -1,0 +1,22 @@
+{
+  "name": "plano-quinzenal-backend",
+  "version": "1.0.0",
+  "description": "Backend para geração de planos quinzenais e PDFs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.5.25",
+    "node-fetch": "^2.7.0",
+    "canvas": "^2.11.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
