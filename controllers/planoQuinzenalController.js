@@ -1,10 +1,7 @@
-// CONTROLLER COMPLETO PARA plano_quinzenal.html
-// Toda a lógica foi migrada do frontend
-
 const fetch = require('node-fetch');
 
 // ============================================
-// DADOS ESTÁTICOS (copiados do frontend)
+// DADOS ESTÁTICOS
 // ============================================
 
 const dadosMocambique = {
@@ -62,7 +59,6 @@ function calcularDatasSemana(trimestre, semanaNumero) {
     
     const dataInicioSemana = new Date(dataInicioTrimestre);
     dataInicioSemana.setDate(dataInicioSemana.getDate() + (semanaNumero - 1) * 7);
-    
     const dataFimSemana = new Date(dataInicioSemana);
     dataFimSemana.setDate(dataFimSemana.getDate() + 4);
     
@@ -71,24 +67,16 @@ function calcularDatasSemana(trimestre, semanaNumero) {
 
 function formatarDataBR(data) {
     if (!data) return { dd: '__', mm: '__' };
-    const dd = String(data.getDate()).padStart(2, '0');
-    const mm = String(data.getMonth() + 1).padStart(2, '0');
-    return { dd, mm };
-}
-
-function getSemanas(semanaDe, semanaAte) {
-    const semanas = [];
-    for (let i = semanaDe; i <= semanaAte; i++) {
-        semanas.push(i);
-    }
-    return semanas;
+    return {
+        dd: String(data.getDate()).padStart(2, '0'),
+        mm: String(data.getMonth() + 1).padStart(2, '0')
+    };
 }
 
 // ============================================
 // CONTROLLERS
 // ============================================
 
-// 1. Buscar dados iniciais (províncias, distritos, disciplinas)
 exports.getDadosIniciais = async (req, res) => {
     try {
         const provincias = Object.keys(dadosMocambique).sort();
@@ -103,36 +91,30 @@ exports.getDadosIniciais = async (req, res) => {
             disciplinas: disciplinas
         });
     } catch (error) {
-        console.error('Erro ao buscar dados iniciais:', error);
         res.status(500).json({ success: false, error: 'Erro ao buscar dados' });
     }
 };
 
-// 2. Buscar distritos por província
 exports.getDistritos = async (req, res) => {
     try {
         const { provincia } = req.body;
         const distritos = dadosMocambique[provincia] || [];
         res.json({ success: true, distritos: distritos.sort() });
     } catch (error) {
-        console.error('Erro ao buscar distritos:', error);
         res.status(500).json({ success: false, error: 'Erro ao buscar distritos' });
     }
 };
 
-// 3. Buscar disciplinas por classe
 exports.getDisciplinas = async (req, res) => {
     try {
         const { classe } = req.body;
         const disciplinas = disciplinasPorClasse[classe] || [];
         res.json({ success: true, disciplinas: disciplinas });
     } catch (error) {
-        console.error('Erro ao buscar disciplinas:', error);
         res.status(500).json({ success: false, error: 'Erro ao buscar disciplinas' });
     }
 };
 
-// 4. Buscar conteúdos da API do Google Apps Script
 exports.buscarConteudos = async (req, res) => {
     try {
         const { classe, disciplina, trimestre, semanaDe, semanaAte } = req.body;
@@ -142,33 +124,20 @@ exports.buscarConteudos = async (req, res) => {
         }
         
         const url = `${API_URL}?classe=${encodeURIComponent(classe)}&disciplina=${encodeURIComponent(disciplina)}&trimestre=${encodeURIComponent(trimestre)}&semanaDe=${semanaDe}&semanaAte=${semanaAte}`;
-        
         const response = await fetch(url);
         const planos = await response.json();
         
         res.json({ success: true, conteudos: planos });
-        
     } catch (error) {
-        console.error('Erro ao buscar conteúdos:', error);
-        res.status(500).json({ success: false, error: 'Erro ao buscar conteúdos da API' });
+        res.status(500).json({ success: false, error: 'Erro ao buscar conteúdos' });
     }
 };
 
-// 5. Gerar plano completo (APENAS os dados, sem HTML duplicado)
 exports.gerarPlano = async (req, res) => {
     try {
         const {
-            provincia,
-            distrito,
-            zipNome,
-            zipNumero,
-            nomeEscola,
-            classe,
-            disciplina,
-            trimestre,
-            conteudos,
-            semanaDe,
-            semanaAte
+            provincia, distrito, zipNome, zipNumero, nomeEscola,
+            classe, disciplina, trimestre, conteudos, semanaDe, semanaAte
         } = req.body;
         
         if (!provincia || !distrito || !classe || !disciplina || !trimestre || !conteudos) {
@@ -180,19 +149,16 @@ exports.gerarPlano = async (req, res) => {
         for (let i = semanaDe; i <= semanaAte; i++) semanas.push(i);
         const filtrados = conteudos.filter(p => semanas.includes(p.numero));
         
-        // Montar cabeçalho ZIP/Escola
+        // Cabeçalho ZIP/Escola
         let htmlCabecalho = '';
-        if (zipNome && zipNumero) {
-            htmlCabecalho += `ZIP: ${zipNome} – Nº: ${zipNumero}`;
-        }
+        if (zipNome && zipNumero) htmlCabecalho += `ZIP: ${zipNome} – Nº: ${zipNumero}`;
         if (nomeEscola) {
             if (htmlCabecalho) htmlCabecalho += '<br>';
             htmlCabecalho += `Escola: ${nomeEscola}`;
         }
         
-        // Montar APENAS a tabela (sem cabeçalho da instituição e sem assinaturas)
+        // Tabela
         let tabelaHtml = '';
-        
         for (const p of filtrados) {
             const datas = calcularDatasSemana(trimestre, p.numero);
             const inicio = formatarDataBR(datas.inicio);
@@ -220,62 +186,41 @@ exports.gerarPlano = async (req, res) => {
             `;
         }
         
-        // Dados para o frontend montar o HTML
-        const planoData = {
-            provincia,
-            distrito,
-            zipNome: zipNome || '',
-            zipNumero: zipNumero || '',
-            nomeEscola: nomeEscola || '',
-            classe,
-            disciplina,
-            trimestre,
-            htmlCabecalho: htmlCabecalho,
-            tabelaHtml: tabelaHtml,
-            ano: ano
-        };
-        
         res.json({
             success: true,
-            planoData: planoData,
+            planoData: {
+                provincia, distrito, classe, disciplina, trimestre,
+                zipNome: zipNome || '', zipNumero: zipNumero || '', nomeEscola: nomeEscola || '',
+                htmlCabecalho: htmlCabecalho,
+                tabelaHtml: tabelaHtml,
+                ano: ano
+            },
             totalSemanas: filtrados.length
         });
-        
     } catch (error) {
-        console.error('Erro ao gerar plano:', error);
         res.status(500).json({ success: false, error: 'Erro ao gerar plano' });
     }
 };
 
-// 6. Validar dados do formulário
 exports.validarDados = async (req, res) => {
     try {
         const { semanaDe, semanaAte } = req.body;
-        
         const errors = [];
         
         if (semanaDe && semanaAte) {
-            if (semanaDe > semanaAte) {
-                errors.push('Semana inicial não pode ser maior que a final');
-            }
-            if (semanaAte - semanaDe + 1 >= 4) {
-                errors.push('Selecione intervalo de três semanas no máximo');
-            }
+            if (semanaDe > semanaAte) errors.push('Semana inicial não pode ser maior que a final');
+            if (semanaAte - semanaDe + 1 >= 4) errors.push('Selecione intervalo de três semanas no máximo');
         }
         
         if (errors.length > 0) {
             return res.status(400).json({ success: false, errors });
         }
-        
         res.json({ success: true, message: 'Dados válidos' });
-        
     } catch (error) {
-        console.error('Erro na validação:', error);
         res.status(500).json({ success: false, error: 'Erro na validação' });
     }
 };
 
-// 7. Obter semanas disponíveis (1 a 13)
 exports.getSemanas = async (req, res) => {
     try {
         const semanas = [];
