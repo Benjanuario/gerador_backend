@@ -34,7 +34,7 @@ const disciplinasPorClasse = {
 
 const datasInicioTrimestre = {
     "1º Trimestre": new Date(2025, 2, 2),
-    "2º Trimestre": new Date(2025, 5, 9),
+    "2º Trimestre": new Date(2025, 6, 1),
     "3º Trimestre": new Date(2025, 8, 15)
 };
 
