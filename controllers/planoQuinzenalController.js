@@ -186,18 +186,66 @@ exports.gerarPlano = async (req, res) => {
             `;
         }
         
+        // HEADERS com idioma
+        let headers = ['SEMANA', 'U.TEMATICA', 'OBJECTIVOS ESPECIFICOS', 'CONTEUDOS', 'COMPETENCIAS BASICAS', 'C.H.'];
+        if (disciplina.toLowerCase().includes('inglês') || disciplina.toLowerCase() === 'inglês') {
+            headers = ['WEEK', 'THEMATIC UNIT', 'SPECIFIC OBJECTIVES', 'CONTENTS', 'BASIC COMPETENCES', 'L.H.'];
+        } else if (disciplina.toLowerCase().includes('francês') || disciplina.toLowerCase() === 'francês') {
+            headers = ['SEMAINE', 'UNITÉ THÉMATIQUE', 'OBJECTIFS SPÉCIFIQUES', 'CONTENUS', 'COMPÉTENCES DE BASE', 'H.H.'];
+        }
+        
+        // GERAR HTML COMPLETO igual ao que o frontend espera
+        const htmlCompleto = `
+            <div class="cabecalho-plano">
+                <img src="icons/emblema.png" alt="Emblema de Moçambique" onerror="this.style.display='none'">
+                <div class="linha-instituicao">REPÚBLICA DE MOÇAMBIQUE</div>
+                <div class="linha-instituicao">MINISTÉRIO DA EDUCAÇÃO E CULTURA</div>
+                <div class="linha-instituicao">PROVÍNCIA DE ${provincia.toUpperCase()}</div>
+                <div class="linha-instituicao">GOVERNO DISTRITAL DE ${distrito.toUpperCase()}</div>
+                <div class="linha-instituicao">SERVIÇO DISTRITAL DE EDUCAÇÃO, JUVENTUDE E TECNOLOGIA</div>
+                <div class="separador">------------------------X-------------------</div>
+                <div class="zip-info">${htmlCabecalho}</div>
+                <div class="dosificacao">Dosificação Quinzenal de ${disciplina} – ${classe}, ${trimestre} / ${ano}</div>
+            </div>
+            <div class="tabela-wrapper">
+                <table id="tabelaPlano">
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th>${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCorpo">
+                        ${tabelaHtml}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="focarEdicao()" class="btn-plano">
+                    ✏️ Editar o Plano
+                </button>
+                <button onclick="irParaPagamento()" class="btn-plano">
+                    📥 EXPORTAR PDF (BAIXAR O PLANO)
+                </button>
+            </div>
+        `;
+        
+        // Dados para salvar no sessionStorage
+        const planoData = {
+            provincia, distrito,
+            zipNome: zipNome || '', zipNumero: zipNumero || '', nomeEscola: nomeEscola || '',
+            classe, disciplina, trimestre,
+            html: htmlCompleto
+        };
+        
         res.json({
             success: true,
-            planoData: {
-                provincia, distrito, classe, disciplina, trimestre,
-                zipNome: zipNome || '', zipNumero: zipNumero || '', nomeEscola: nomeEscola || '',
-                htmlCabecalho: htmlCabecalho,
-                tabelaHtml: tabelaHtml,
-                ano: ano
-            },
+            html: htmlCompleto,
+            planoData: planoData,
             totalSemanas: filtrados.length
         });
+        
     } catch (error) {
+        console.error('Erro ao gerar plano:', error);
         res.status(500).json({ success: false, error: 'Erro ao gerar plano' });
     }
 };
