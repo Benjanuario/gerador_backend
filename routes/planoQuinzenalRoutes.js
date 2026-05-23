@@ -18,7 +18,7 @@ router.post("/disciplinas", planoQuinzenalController.getDisciplinas);
 // Buscar conteúdos da API do Google Apps Script
 router.post("/buscar-conteudos", planoQuinzenalController.buscarConteudos);
 
-// Gerar plano completo (HTML da tabela)
+// Gerar plano completo (retorna dados para o frontend montar)
 router.post("/gerar-plano", planoQuinzenalController.gerarPlano);
 
 // Validar dados do formulário
