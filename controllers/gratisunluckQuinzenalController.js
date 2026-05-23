@@ -66,16 +66,18 @@ function extrairTabelaDoHTML(html) {
     return { headers, rows };
 }
 
-// ============================================
-// FUNÇÃO PARA GERAR PDF (igual ao frontend)
-// ============================================
-
+// ==================== FUNÇÃO PARA GERAR PDF ====================
 async function gerarPDFBackend(planoData) {
     return new Promise(async (resolve, reject) => {
         try {
-            const html = planoData.html || '';
-            const { headers, rows } = extrairTabelaDoHTML(html);
+            // Usar headers e rows enviados pelo frontend
+            let headers = planoData.tabelaHeaders || ['SEMANA', 'U.TEMATICA', 'OBJECTIVOS ESPECIFICOS', 'CONTEUDOS', 'COMPETENCIAS BASICAS', 'C.H.'];
+            let rows = planoData.tabelaRows || [];
 
+            console.log('Headers recebidos:', headers);
+            console.log('Rows recebidas:', rows.length);
+
+            // Configurar PDF
             const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
             doc.setFont("times", "normal");
             doc.setTextColor(0, 0, 0);
@@ -139,6 +141,7 @@ async function gerarPDFBackend(planoData) {
 
             const pageWidth = doc.internal.pageSize.getWidth();
 
+            // Retângulo esquerdo (Delegado)
             const rectEsqX = 5, rectEsqY = 10, rectEsqLarg = 65, rectEsqAlt = 38;
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
@@ -152,6 +155,7 @@ async function gerarPDFBackend(planoData) {
             doc.setFont("times", "normal");
             doc.text(`________/________/${anoAtual}`, rectEsqX + rectEsqLarg/2, rectEsqY + 33, { align: 'center' });
 
+            // Retângulo direito (Visto)
             const rectDirX = pageWidth - 70, rectDirY = 10, rectDirLarg = 65, rectDirAlt = 38;
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
@@ -167,6 +171,7 @@ async function gerarPDFBackend(planoData) {
             doc.setFont("times", "normal");
             doc.text(`________/________/${anoAtual}`, rectDirX + rectDirLarg/2, rectDirY + 33, { align: 'center' });
 
+            // Gerar tabela com os dados recebidos
             if (headers.length > 0 && rows.length > 0) {
                 const margin = { left: 7, right: 7 };
                 const tableWidth = pageWidth - margin.left - margin.right;
@@ -186,6 +191,8 @@ async function gerarPDFBackend(planoData) {
                     tableWidth: 'wrap',
                     showHead: 'firstPage'
                 });
+            } else {
+                console.warn('Nenhuma linha para gerar na tabela');
             }
 
             const disciplina = planoData.disciplina || 'Disciplina';
@@ -201,8 +208,7 @@ async function gerarPDFBackend(planoData) {
             reject(err);
         }
     });
-}
-
+    }
 // ============================================
 // CONTROLLERS
 // ============================================
@@ -212,7 +218,7 @@ exports.gerarPDF = async (req, res) => {
     try {
         const { planoData } = req.body;
         
-        if (!planoData || !planoData.html) {
+        if (!planoData) {
             return res.status(400).json({ success: false, error: 'Dados do plano não fornecidos' });
         }
         
