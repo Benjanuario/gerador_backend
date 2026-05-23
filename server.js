@@ -5,7 +5,7 @@ require("dotenv").config();
 const app = express();
 
 app.use(cors({ 
-  origin: ["https://seu-app.firebaseapp.com", "https://seu-app.web.app", "http://localhost:3000"],
+  origin: ["https://profbenjanuario-4d854.firebaseapp.com", "https://profbenjanuario-4d854.web.app", "http://localhost:3000"],
   methods: ["GET", "POST"],
   credentials: true
 }));
