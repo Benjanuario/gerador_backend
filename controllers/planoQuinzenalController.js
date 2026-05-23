@@ -84,15 +84,6 @@ function getSemanas(semanaDe, semanaAte) {
     return semanas;
 }
 
-function adaptarIdiomaTabela(disciplina, headers) {
-    if (disciplina.toLowerCase().includes('inglês') || disciplina.toLowerCase() === 'inglês') {
-        return ['WEEK', 'THEMATIC UNIT', 'SPECIFIC OBJECTIVES', 'CONTENTS', 'BASIC COMPETENCES', 'L.H.'];
-    } else if (disciplina.toLowerCase().includes('francês') || disciplina.toLowerCase() === 'francês') {
-        return ['SEMAINE', 'UNITÉ THÉMATIQUE', 'OBJECTIFS SPÉCIFIQUES', 'CONTENUS', 'COMPÉTENCES DE BASE', 'H.H.'];
-    }
-    return headers;
-}
-
 // ============================================
 // CONTROLLERS
 // ============================================
@@ -101,20 +92,15 @@ function adaptarIdiomaTabela(disciplina, headers) {
 exports.getDadosIniciais = async (req, res) => {
     try {
         const provincias = Object.keys(dadosMocambique).sort();
-        
-        // Distritos da primeira província como exemplo
         const primeiraProvincia = provincias[0];
         const distritos = dadosMocambique[primeiraProvincia] || [];
-        
-        // Disciplinas da primeira classe
         const disciplinas = disciplinasPorClasse["1ª Classe"] || [];
         
         res.json({
             success: true,
             provincias: provincias,
             distritos: distritos.sort(),
-            disciplinas: disciplinas,
-            todasDisciplinas: disciplinasPorClasse
+            disciplinas: disciplinas
         });
     } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error);
@@ -168,7 +154,7 @@ exports.buscarConteudos = async (req, res) => {
     }
 };
 
-// 5. Gerar plano completo (HTML da tabela)
+// 5. Gerar plano completo (APENAS os dados, sem HTML duplicado)
 exports.gerarPlano = async (req, res) => {
     try {
         const {
@@ -190,7 +176,8 @@ exports.gerarPlano = async (req, res) => {
         }
         
         const ano = new Date().getFullYear();
-        const semanas = getSemanas(semanaDe, semanaAte);
+        const semanas = [];
+        for (let i = semanaDe; i <= semanaAte; i++) semanas.push(i);
         const filtrados = conteudos.filter(p => semanas.includes(p.numero));
         
         // Montar cabeçalho ZIP/Escola
@@ -203,7 +190,7 @@ exports.gerarPlano = async (req, res) => {
             htmlCabecalho += `Escola: ${nomeEscola}`;
         }
         
-        // Montar tabela
+        // Montar APENAS a tabela (sem cabeçalho da instituição e sem assinaturas)
         let tabelaHtml = '';
         
         for (const p of filtrados) {
@@ -216,75 +203,24 @@ exports.gerarPlano = async (req, res) => {
                     <td style="border: 1px solid black; padding: 6px; text-align: center; vertical-align: middle;">
                         ${p.numero}ª Semana<br>
                         <small>
-                            Data: De: ${inicio.dd}/${inicio.mm}/${ano} até: ${fim.dd}/${fim.mm}/${ano}
+                            Data: De: 
+                            <input type="text" class="data-input" value="${inicio.dd}" placeholder="dd" maxlength="2">/
+                            <input type="text" class="data-input" value="${inicio.mm}" placeholder="mm" maxlength="2">/${ano} 
+                            até: 
+                            <input type="text" class="data-input" value="${fim.dd}" placeholder="dd" maxlength="2">/
+                            <input type="text" class="data-input" value="${fim.mm}" placeholder="mm" maxlength="2">/${ano}
                         </small>
                     </td>
-                    <td style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.unidade_tematica)}</td>
-                    <td style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.objetivo_especifico)}</td>
-                    <td style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.conteudo)}</td>
-                    <td style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.competencia_basica)}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center; vertical-align: middle;">${formatarBullets(p.carga_horaria)}</td>
+                    <td contenteditable="true" style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.unidade_tematica)}</td>
+                    <td contenteditable="true" style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.objetivo_especifico)}</td>
+                    <td contenteditable="true" style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.conteudo)}</td>
+                    <td contenteditable="true" style="border: 1px solid black; padding: 6px; vertical-align: top;">${formatarBullets(p.competencia_basica)}</td>
+                    <td contenteditable="true" style="border: 1px solid black; padding: 6px; text-align: center; vertical-align: middle;">${formatarBullets(p.carga_horaria)}</td>
                 </tr>
             `;
         }
         
-        // Headers com idioma
-        let headers = ['SEMANA', 'U.TEMATICA', 'OBJECTIVOS ESPECIFICOS', 'CONTEUDOS', 'COMPETENCIAS BASICAS', 'C.H.'];
-        headers = adaptarIdiomaTabela(disciplina, headers);
-        
-        // Gerar HTML completo
-        const htmlCompleto = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Plano Quinzenal - ${disciplina}</title>
-                <style>
-                    body { font-family: 'Times New Roman', Times, serif; margin: 20px; }
-                    .cabecalho-plano { text-align: center; margin-bottom: 20px; }
-                    .linha-instituicao { font-weight: bold; font-size: 14px; text-transform: uppercase; }
-                    .separador { margin: 8px 0; letter-spacing: 2px; }
-                    .zip-info { margin-top: 10px; font-weight: bold; font-size: 13px; }
-                    .dosificacao { text-align: center; font-size: 12px; margin: 10px 0; font-style: italic; }
-                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-                    th { border: 1px solid black; padding: 6px; background-color: #6c757d; text-align: center; }
-                    td { border: 1px solid black; padding: 6px; vertical-align: top; }
-                    .assinaturas { margin-top: 30px; display: flex; justify-content: space-between; }
-                    .assinatura { width: 200px; text-align: center; }
-                    .linha { border-top: 1px solid black; padding-top: 5px; margin-top: 5px; }
-                    @media print { body { margin: 0; } }
-                </style>
-            </head>
-            <body>
-                <div class="cabecalho-plano">
-                    <div class="linha-instituicao">REPÚBLICA DE MOÇAMBIQUE</div>
-                    <div class="linha-instituicao">MINISTÉRIO DA EDUCAÇÃO E CULTURA</div>
-                    <div class="linha-instituicao">PROVÍNCIA DE ${provincia.toUpperCase()}</div>
-                    <div class="linha-instituicao">GOVERNO DISTRITAL DE ${distrito.toUpperCase()}</div>
-                    <div class="linha-instituicao">SERVIÇO DISTRITAL DE EDUCAÇÃO, JUVENTUDE E TECNOLOGIA</div>
-                    <div class="separador">------------------------X-------------------</div>
-                    <div class="zip-info">${htmlCabecalho}</div>
-                    <div class="dosificacao">Dosificação Quinzenal de ${disciplina} – ${classe}, ${trimestre} / ${ano}</div>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            ${headers.map(h => `<th style="width: ${h === 'SEMANA' || h === 'WEEK' || h === 'SEMAINE' ? '10%' : h === 'C.H.' || h === 'L.H.' || h === 'H.H.' ? '5%' : 'auto'}">${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tabelaHtml}
-                    </tbody>
-                </table>
-                <div class="assinaturas">
-                    <div class="assinatura"><div class="linha">O Delegado da Disciplina</div><div>________/________/${ano}</div></div>
-                    <div class="assinatura"><div class="linha">VISTO</div><div>O DAP</div><div>________/________/${ano}</div></div>
-                </div>
-            </body>
-            </html>
-        `;
-        
-        // Dados para salvar no sessionStorage (igual ao frontend)
+        // Dados para o frontend montar o HTML
         const planoData = {
             provincia,
             distrito,
@@ -294,12 +230,13 @@ exports.gerarPlano = async (req, res) => {
             classe,
             disciplina,
             trimestre,
-            html: htmlCompleto
+            htmlCabecalho: htmlCabecalho,
+            tabelaHtml: tabelaHtml,
+            ano: ano
         };
         
         res.json({
             success: true,
-            html: htmlCompleto,
             planoData: planoData,
             totalSemanas: filtrados.length
         });
@@ -313,12 +250,9 @@ exports.gerarPlano = async (req, res) => {
 // 6. Validar dados do formulário
 exports.validarDados = async (req, res) => {
     try {
-        const { provincia, distrito, semanaDe, semanaAte } = req.body;
+        const { semanaDe, semanaAte } = req.body;
         
         const errors = [];
-        
-        if (!provincia) errors.push('Selecione a província');
-        if (!distrito) errors.push('Selecione o distrito');
         
         if (semanaDe && semanaAte) {
             if (semanaDe > semanaAte) {
